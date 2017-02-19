@@ -61,7 +61,24 @@ h2_layer = tf.nn.relu(h2_layer)
 W3 = tf.Variable(tf.random_uniform([500, 1]))
 b3 = tf.Variable(tf.random_uniform([1]))
 output_layer = tf.reduce_sum(tf.matmul(h2_layer, W3) + b3)
-y = tf.placeholder(tf.float32, [1])
+y = tf.placeholder(tf.float32)
 
-loss = tf.losses.log_loss(y, output_layer)
-optimizer = tf.train.GradientDescentOptimizer(learning_rate=.01).minimize(loss)
+# loss = tf.losses.log_loss(y, output_layer)
+cross_entropy = -tf.reduce_sum(y * tf.log(output_layer))
+optimizer = tf.train.GradientDescentOptimizer(learning_rate=.1).minimize(cross_entropy)
+
+sess = tf.Session()
+
+init = tf.global_variables_initializer()
+sess.run(init)
+
+# get the next batch
+for batch, label in batch_gen:
+    batch = np.reshape(batch, [1, -1])
+    # feed the batch
+    # TODO train for longer
+    o, l = sess.run([optimizer, cross_entropy], feed_dict={input_layer: batch, y: label})
+    # log results
+    print('loss:{}'.format(l))
+
+sess.close()
