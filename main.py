@@ -1,4 +1,4 @@
-#import tensorflow as tf
+import tensorflow as tf
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelBinarizer
@@ -42,7 +42,26 @@ df_train = pd.read_csv('./data/train.csv', keep_default_na=False)
 df_train = df_train.drop(['Street', 'LotFrontage', 'LandSlope', 'YearBuilt', 'YearRemodAdd',
                           'MasVnrArea', 'Foundation', 'GarageYrBlt', 'MoSold', 'YrSold'], 1)
 df_train_encoded = oh_encode(df_train)
+
 batch_gen = batch_generator(df_train_encoded)
-# print(next(batch_gen))
-# print('*'*8)
-# print(next(batch_gen))
+NUM_FEATURES = 299
+
+# create the neural network model
+input_layer = tf.placeholder(tf.float32, [None, NUM_FEATURES])
+W1 = tf.Variable(tf.random_uniform([NUM_FEATURES, 500]))
+b1 = tf.Variable(tf.random_uniform([500]))
+h1_layer = tf.matmul(input_layer, W1) + b1
+h1_layer = tf.nn.relu(h1_layer)
+
+W2 = tf.Variable(tf.random_uniform([500, 500]))
+b2 = tf.Variable(tf.random_uniform([500]))
+h2_layer = tf.matmul(h1_layer, W2) + b2
+h2_layer = tf.nn.relu(h2_layer)
+
+W3 = tf.Variable(tf.random_uniform([500, 1]))
+b3 = tf.Variable(tf.random_uniform([1]))
+output_layer = tf.reduce_sum(tf.matmul(h2_layer, W3) + b3)
+y = tf.placeholder(tf.float32, [1])
+
+loss = tf.losses.log_loss(y, output_layer)
+optimizer = tf.train.GradientDescentOptimizer(learning_rate=.01).minimize(loss)
