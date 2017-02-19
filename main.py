@@ -48,37 +48,45 @@ NUM_FEATURES = 299
 
 # create the neural network model
 input_layer = tf.placeholder(tf.float32, [None, NUM_FEATURES])
-W1 = tf.Variable(tf.random_uniform([NUM_FEATURES, 500]))
-b1 = tf.Variable(tf.random_uniform([500]))
+W1 = tf.Variable(tf.random_uniform([NUM_FEATURES, 50]))
+b1 = tf.Variable(tf.random_uniform([50]))
 h1_layer = tf.matmul(input_layer, W1) + b1
 h1_layer = tf.nn.relu(h1_layer)
 
-W2 = tf.Variable(tf.random_uniform([500, 500]))
-b2 = tf.Variable(tf.random_uniform([500]))
+W2 = tf.Variable(tf.random_uniform([50, 50]))
+b2 = tf.Variable(tf.random_uniform([50]))
 h2_layer = tf.matmul(h1_layer, W2) + b2
 h2_layer = tf.nn.relu(h2_layer)
 
-W3 = tf.Variable(tf.random_uniform([500, 1]))
+W3 = tf.Variable(tf.random_uniform([50, 1]))
 b3 = tf.Variable(tf.random_uniform([1]))
 output_layer = tf.reduce_sum(tf.matmul(h2_layer, W3) + b3)
-y = tf.placeholder(tf.float32)
+y = tf.placeholder(tf.float32, shape=[None, 1])
 
-# loss = tf.losses.log_loss(y, output_layer)
-cross_entropy = -tf.reduce_sum(y * tf.log(output_layer))
-optimizer = tf.train.GradientDescentOptimizer(learning_rate=.1).minimize(cross_entropy)
+loss = tf.reduce_mean(-tf.reduce_sum(y * tf.log(output_layer), reduction_indices=1))
+# cross_entropy = -tf.reduce_sum(y * tf.log(output_layer))
+optimizer = tf.train.GradientDescentOptimizer(learning_rate=.1).minimize(loss)
 
 sess = tf.Session()
 
 init = tf.global_variables_initializer()
 sess.run(init)
 
+all_examples = np.array([[np.array(b), l] for b, l in batch_gen])
+
 # get the next batch
-for batch, label in batch_gen:
-    batch = np.reshape(batch, [1, -1])
+for i in range(50000):
+    idx = np.random.randint(0, len(all_examples), 50)
+    batches = all_examples[idx]
+    labels = batches[:, 1]
+    batches = np.array(batches[:, 0])
+    batches = np.concatenate(batches)
+    batches = np.reshape(batches, [50, 299])
+    labels = np.reshape(labels, [50, 1])
     # feed the batch
-    # TODO train for longer
-    o, l = sess.run([optimizer, cross_entropy], feed_dict={input_layer: batch, y: label})
+    o, l = sess.run([optimizer, loss], feed_dict={input_layer: batches, y: labels})
     # log results
-    print('loss:{}'.format(l))
+    if i % 500 == 0:
+        print('epoch: {}, loss: {}'.format(i, l))
 
 sess.close()
