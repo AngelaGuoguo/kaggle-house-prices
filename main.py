@@ -59,24 +59,24 @@ NUM_FEATURES = 299
 
 # create the neural network model
 input_layer = tf.placeholder(tf.float32, [None, NUM_FEATURES])
-W1 = tf.Variable(tf.random_uniform([NUM_FEATURES, 100]))
-b1 = tf.Variable(tf.random_uniform([100]))
+W1 = tf.Variable(tf.random_normal([NUM_FEATURES, 100], stddev=.1))
+b1 = tf.Variable(tf.random_normal([100], stddev=.1))
 h1_layer = tf.matmul(input_layer, W1) + b1
 h1_layer = tf.nn.relu(h1_layer)
 
-W2 = tf.Variable(tf.random_uniform([100, 100]))
-b2 = tf.Variable(tf.random_uniform([100]))
+W2 = tf.Variable(tf.random_normal([100, 100], stddev=.1))
+b2 = tf.Variable(tf.random_normal([100], stddev=.1))
 h2_layer = tf.matmul(h1_layer, W2) + b2
 h2_layer = tf.nn.relu(h2_layer)
 
-W3 = tf.Variable(tf.random_uniform([100, 1]))
-b3 = tf.Variable(tf.random_uniform([1]))
+W3 = tf.Variable(tf.random_normal([100, 1], stddev=.1))
+b3 = tf.Variable(tf.random_normal([1], stddev=.1))
 output_layer = tf.reduce_sum(tf.matmul(h2_layer, W3) + b3)
 y = tf.placeholder(tf.float32, shape=[None, 1])
 
-loss = tf.reduce_mean(-tf.reduce_sum(y * tf.log(output_layer), reduction_indices=1))
+loss = tf.reduce_mean(tf.reduce_sum(tf.square(tf.subtract(y, output_layer))))
 # cross_entropy = -tf.reduce_sum(y * tf.log(output_layer))
-optimizer = tf.train.AdamOptimizer(learning_rate=.1).minimize(loss)
+optimizer = tf.train.AdamOptimizer(learning_rate=.0001).minimize(loss)
 
 sess = tf.Session()
 
