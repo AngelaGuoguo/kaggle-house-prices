@@ -6,7 +6,7 @@ from sklearn.preprocessing import LabelBinarizer
 
 def oh_encode(data_frame):
     """Encodes categorical columns into their One-Hot representations."""
-    data_encoded = {}
+    data_encoded = []
     for feature in data_frame:
         data_i = df_train[feature]
         encoder = None
@@ -14,16 +14,17 @@ def oh_encode(data_frame):
             encoder = LabelBinarizer()
             encoder.fit(list(set(df_train[feature])))
             data_i = encoder.transform(data_i)
-        data_encoded[feature] = [data_i, encoder]
-    return data_encoded
+        data_i = np.array(data_i)
+        data_encoded.append([data_i, encoder])
+    return np.array(data_encoded)
 
 
 def batch_generator(data_frame_encoded):
     """Generates data to be fed to the neural network."""
-    labels = data_frame_encoded['SalePrice'][0]
-    del data_frame_encoded['SalePrice']
-    data = np.array(list(data_frame_encoded.values()))[:, 0]
-    data = [np.array(d) for d in data]
+    labels = data_frame_encoded[-1][0]
+    data = np.delete(data_frame_encoded, -1, axis=0)
+    data = data_frame_encoded[:, 0]
+    # data = [np.array(d) for d in data]
 
     NUM_FEATURES = len(data)
     NUM_BATCHES = len(data[0])
@@ -37,28 +38,35 @@ def batch_generator(data_frame_encoded):
         yield batch_compiled, labels[i]
 
 
+def normalize(data_frame_encoded):
+    """Normalize the data using log function."""
+    return data_frame_encoded
+
+
 df_train = pd.read_csv('./data/train.csv', keep_default_na=False)
 # drop useless data
-df_train = df_train.drop(['Street', 'LotFrontage', 'LandSlope', 'YearBuilt', 'YearRemodAdd',
+df_train = df_train.drop(['Id', 'Street', 'LotFrontage', 'LandSlope', 'YearBuilt', 'YearRemodAdd',
                           'MasVnrArea', 'Foundation', 'GarageYrBlt', 'MoSold', 'YrSold'], 1)
+column_names = df_train.columns.values
 df_train_encoded = oh_encode(df_train)
+df_train_encoded_normalized = normalize(df_train_encoded)
 
-batch_gen = batch_generator(df_train_encoded)
+batch_gen = batch_generator(df_train_encoded_normalized)
 NUM_FEATURES = 299
 
 # create the neural network model
 input_layer = tf.placeholder(tf.float32, [None, NUM_FEATURES])
-W1 = tf.Variable(tf.random_uniform([NUM_FEATURES, 50]))
-b1 = tf.Variable(tf.random_uniform([50]))
+W1 = tf.Variable(tf.random_uniform([NUM_FEATURES, 100]))
+b1 = tf.Variable(tf.random_uniform([100]))
 h1_layer = tf.matmul(input_layer, W1) + b1
 h1_layer = tf.nn.relu(h1_layer)
 
-W2 = tf.Variable(tf.random_uniform([50, 50]))
-b2 = tf.Variable(tf.random_uniform([50]))
+W2 = tf.Variable(tf.random_uniform([100, 100]))
+b2 = tf.Variable(tf.random_uniform([100]))
 h2_layer = tf.matmul(h1_layer, W2) + b2
 h2_layer = tf.nn.relu(h2_layer)
 
-W3 = tf.Variable(tf.random_uniform([50, 1]))
+W3 = tf.Variable(tf.random_uniform([100, 1]))
 b3 = tf.Variable(tf.random_uniform([1]))
 output_layer = tf.reduce_sum(tf.matmul(h2_layer, W3) + b3)
 y = tf.placeholder(tf.float32, shape=[None, 1])
