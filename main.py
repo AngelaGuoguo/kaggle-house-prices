@@ -14,7 +14,7 @@ def oh_encode(data_frame):
             encoder = LabelBinarizer()
             encoder.fit(list(set(df_train[feature])))
             data_i = encoder.transform(data_i)
-        data_i = np.array(data_i)
+        data_i = np.array(data_i, dtype=np.float32)
         data_encoded.append([data_i, encoder])
     return np.array(data_encoded)
 
@@ -40,7 +40,10 @@ def batch_generator(data_frame_encoded):
 
 def normalize(data_frame_encoded):
     """Normalize the data using log function."""
-    return data_frame_encoded
+    data = data_frame_encoded[:, 0]
+    encoders = data_frame_encoded[:, 1]
+    data = [np.piecewise(tt, [tt > 1., tt <= 1.], [lambda tt: np.log(tt), lambda tt: tt]) for tt in data]
+    return np.array([[d, e] for d, e in zip(data, encoders)])
 
 
 df_train = pd.read_csv('./data/train.csv', keep_default_na=False)
@@ -73,7 +76,7 @@ y = tf.placeholder(tf.float32, shape=[None, 1])
 
 loss = tf.reduce_mean(-tf.reduce_sum(y * tf.log(output_layer), reduction_indices=1))
 # cross_entropy = -tf.reduce_sum(y * tf.log(output_layer))
-optimizer = tf.train.GradientDescentOptimizer(learning_rate=.1).minimize(loss)
+optimizer = tf.train.AdamOptimizer(learning_rate=.1).minimize(loss)
 
 sess = tf.Session()
 
