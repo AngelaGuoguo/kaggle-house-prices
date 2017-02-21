@@ -1,6 +1,7 @@
-import tensorflow as tf
 import numpy as np
 import pandas as pd
+from sklearn.linear_model import SGDRegressor
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer
 
 
@@ -23,7 +24,7 @@ def normalize(data_frame_encoded):
     """Normalize the data using log function."""
     data = data_frame_encoded[:, 0]
     encoders = data_frame_encoded[:, 1]
-    data = [np.piecewise(tt, [tt > 1., tt <= 1.], [lambda tt: np.log(tt), lambda tt: tt]) for tt in data]
+    data = [np.log(tt + 1) for tt in data]
     return np.array([[d, e] for d, e in zip(data, encoders)])
 
 
@@ -57,60 +58,14 @@ df_train_encoded_normalized = normalize(df_train_encoded)
 batch_gen = batch_generator(df_train_encoded_normalized)
 NUM_FEATURES = 299
 
-# create the neural network model
-input_layer = tf.placeholder(tf.float32, [None, NUM_FEATURES])
-W1 = tf.Variable(tf.random_normal([NUM_FEATURES, 100], stddev=.1))
-b1 = tf.Variable(tf.random_normal([100], stddev=.1))
-h1_layer = tf.matmul(input_layer, W1) + b1
-h1_layer = tf.nn.relu(h1_layer)
-h1_layer = tf.nn.dropout(h1_layer, .2)
-
-W2 = tf.Variable(tf.random_normal([100, 100], stddev=.1))
-b2 = tf.Variable(tf.random_normal([100], stddev=.1))
-h2_layer = tf.matmul(h1_layer, W2) + b2
-h2_layer = tf.nn.relu(h2_layer)
-h2_layer = tf.nn.dropout(h2_layer, .2)
-
-W3 = tf.Variable(tf.random_normal([100, 1], stddev=.1))
-b3 = tf.Variable(tf.random_normal([1], stddev=.1))
-output_layer = tf.reduce_sum(tf.matmul(h2_layer, W3) + b3)
-y = tf.placeholder(tf.float32, shape=[None, 1])
-
-loss = tf.reduce_mean(tf.reduce_sum(tf.square(tf.subtract(y, output_layer))))
-# loss = tf.reduce_mean(tf.reduce_sum(tf.multiply(y, tf.log(output_layer))))
-# cross_entropy = -tf.reduce_sum(y * tf.log(output_layer))
-optimizer = tf.train.AdamOptimizer(learning_rate=.0001).minimize(loss)
-
-sess = tf.Session()
-
-init = tf.global_variables_initializer()
-sess.run(init)
-
 all_examples = np.array([[np.array(b), l] for b, l in batch_gen])
-train_examples = all_examples[:1150]
-valid_examples = all_examples[1150:]
-valid_labels = valid_examples[:, 1]
-valid_labels = np.reshape(valid_labels, [-1, 1])
+X_train, X_test, y_train, y_test = train_test_split(all_examples[:, 0], all_examples[:, 1], test_size=0.25)
+X_train = np.concatenate(X_train)
+X_train = np.reshape(X_train, [-1, 299])
 
-valid_batches = np.array(valid_examples[:, 0])
-valid_batches = np.concatenate(valid_batches)
-valid_batches = np.reshape(valid_batches, [-1, 299])
-
-# get the next batch
-for i in range(50000):
-    idx = np.random.randint(0, len(train_examples), 50)
-    train_batches = train_examples[idx]
-    train_labels = np.array([train_batches[:, 1]])
-    train_labels = np.reshape(train_labels, [50, 1])
-
-    train_batches = np.array(train_batches[:, 0])
-    train_batches = np.concatenate(train_batches)
-    train_batches = np.reshape(train_batches, [50, 299])
-    # feed the batch
-    _, train_loss = sess.run([optimizer, loss], feed_dict={input_layer: train_batches, y: train_labels})
-    # log results
-    if i % 500 == 0:
-        valid_loss = sess.run([loss], feed_dict={input_layer: valid_batches, y: valid_labels})
-        print('epoch: {}, loss: {}'.format(i, train_loss))
-
-sess.close()
+X_test = np.concatenate(X_test)
+X_test = np.reshape(X_test, [-1, 299])
+clf = SGDRegressor()
+clf.fit(X_train, y_train)
+score = clf.score(X_test, y_test)
+print(score)
