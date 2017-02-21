@@ -19,6 +19,14 @@ def oh_encode(data_frame):
     return np.array(data_encoded)
 
 
+def normalize(data_frame_encoded):
+    """Normalize the data using log function."""
+    data = data_frame_encoded[:, 0]
+    encoders = data_frame_encoded[:, 1]
+    data = [np.piecewise(tt, [tt > 1., tt <= 1.], [lambda tt: np.log(tt), lambda tt: tt]) for tt in data]
+    return np.array([[d, e] for d, e in zip(data, encoders)])
+
+
 def batch_generator(data_frame_encoded):
     """Generates data to be fed to the neural network."""
     labels = data_frame_encoded[-1][0]
@@ -36,14 +44,6 @@ def batch_generator(data_frame_encoded):
             else:
                 batch_compiled.extend([data[j][i]])
         yield batch_compiled, labels[i]
-
-
-def normalize(data_frame_encoded):
-    """Normalize the data using log function."""
-    data = data_frame_encoded[:, 0]
-    encoders = data_frame_encoded[:, 1]
-    data = [np.piecewise(tt, [tt > 1., tt <= 1.], [lambda tt: np.log(tt), lambda tt: tt]) for tt in data]
-    return np.array([[d, e] for d, e in zip(data, encoders)])
 
 
 df_train = pd.read_csv('./data/train.csv', keep_default_na=False)
@@ -87,21 +87,30 @@ init = tf.global_variables_initializer()
 sess.run(init)
 
 all_examples = np.array([[np.array(b), l] for b, l in batch_gen])
+train_examples = all_examples[:1150]
+valid_examples = all_examples[1150:]
+valid_labels = valid_examples[:, 1]
+valid_labels = np.reshape(valid_labels, [-1, 1])
+
+valid_batches = np.array(valid_examples[:, 0])
+valid_batches = np.concatenate(valid_batches)
+valid_batches = np.reshape(valid_batches, [-1, 299])
 
 # get the next batch
 for i in range(50000):
-    idx = np.random.randint(0, len(all_examples), 50)
-    batches = all_examples[idx]
-    labels = batches[:, 1]
-    batches = np.array(batches[:, 0])
-    batches = np.concatenate(batches)
-    batches = np.reshape(batches, [50, 299])
-    labels = np.reshape(labels, [50, 1])
+    idx = np.random.randint(0, len(train_examples), 50)
+    train_batches = train_examples[idx]
+    train_labels = np.array([train_batches[:, 1]])
+    train_labels = np.reshape(train_labels, [50, 1])
+
+    train_batches = np.array(train_batches[:, 0])
+    train_batches = np.concatenate(train_batches)
+    train_batches = np.reshape(train_batches, [50, 299])
     # feed the batch
-    o, l = sess.run([optimizer, loss], feed_dict={input_layer: batches, y: labels})
+    _, train_loss = sess.run([optimizer, loss], feed_dict={input_layer: train_batches, y: train_labels})
     # log results
     if i % 500 == 0:
-        # TODO create validation dataset
-        print('epoch: {}, loss: {}'.format(i, l))
+        valid_loss = sess.run([loss], feed_dict={input_layer: valid_batches, y: valid_labels})
+        print('epoch: {}, loss: {}'.format(i, train_loss))
 
 sess.close()
