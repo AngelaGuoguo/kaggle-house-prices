@@ -59,15 +59,12 @@ b3 = tf.Variable(tf.random_normal([1], stddev=.01), name='b3')
 output_layer = tf.matmul(h2_layer, W3) + b3
 y = tf.placeholder(tf.float32, shape=[None, 1], name='y')
 
-loss = tf.subtract(y, output_layer)
-loss = tf.square(loss)
-loss = tf.reduce_sum(loss)
-loss = tf.divide(loss, 2.)
+loss = tf.squared_difference(output_layer, y)
 reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
 reg_constant = 0.01  # Choose an appropriate one.
-# loss = loss + reg_constant * sum(reg_losses)
-loss = tf.add(loss, tf.multiply(reg_constant, sum(reg_losses)), name='loss')
-optimizer = tf.train.AdamOptimizer(learning_rate=1e-6, beta1=.8, beta2=.9, name='optimizer').minimize(loss)
+loss = loss + reg_constant * sum(reg_losses)
+loss = tf.reduce_mean(loss)
+optimizer = tf.train.AdamOptimizer(learning_rate=1e-6, name='optimizer').minimize(loss)
 
 all_examples = np.array([[np.array(b), l] for b, l in batch_gen])
 # split data into train and validation
@@ -87,6 +84,8 @@ sess = tf.Session()
 init = tf.global_variables_initializer()
 sess.run(init)
 
+vars = None
+
 # get the next batch
 for i in range(NUM_EPOCHS):
     idx = np.random.randint(0, len(train_examples), TRAINING_EXAMPLES)
@@ -101,14 +100,15 @@ for i in range(NUM_EPOCHS):
     _, train_loss = sess.run([optimizer, loss], feed_dict={input_layer: train_batches, y: train_labels, keep_prob: .75})
     valid_loss = sess.run(loss, feed_dict={input_layer: valid_batches, y: valid_labels, keep_prob: 1.})
     # log results
-    if i % 1000 == 0:
+    if i % 100 == 0:
         print('epoch: {}, train loss: {}, valid loss: {}'.format(i, train_loss, valid_loss))
     if valid_loss < min_loss:
         min_loss = valid_loss
-        # save_path = saver.save(sess, "./saves/model{}.ckpt".format(valid_loss))
         vars = sess.run([W1, b1, W2, b2, W3, b3])
+    if abs(valid_loss) < .1:
         pickle.dump(vars, open('./saves/weights.pickle', 'wb'))
         print('Saved a model with loss {}'.format(valid_loss))
-        # print('Best model so far: loss: {}, epoch: {}'.format(valid_loss, i))
+        sess.close()
+        exit()
 
 sess.close()

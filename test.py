@@ -54,9 +54,16 @@ gen = batch_generator(df_train_encoded_normalized)
 
 all_batches = [b for b in gen]
 
+prices = None
+
 with tf.Session() as sess:
     prices = sess.run([output_layer], feed_dict={input_layer: all_batches})
     prices = np.array(prices).flatten()
+    prices = np.exp(prices) + 1.
     print(prices)
-    prices = [x*10 for x in prices]
-    print(prices)
+sess.close()
+
+ids_prices = [[id, sp] for id, sp in zip(ids, prices)]
+import pandas as pd
+df_prices = pd.DataFrame(ids_prices)
+df_prices.to_csv('./data/my_submission.csv', index=False, header=['Id', 'SalePrice'])
