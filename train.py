@@ -8,7 +8,7 @@ from tools import normalize, num_features, HIDDEN_SIZE
 from tools import oh_encode
 
 TRAINING_EXAMPLES = 10
-NUM_EPOCHS = 100000
+NUM_EPOCHS = 400000
 
 
 def batch_generator(data_frame_encoded):
@@ -64,7 +64,7 @@ reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
 reg_constant = 0.01  # Choose an appropriate one.
 loss = loss + reg_constant * sum(reg_losses)
 loss = tf.reduce_mean(loss)
-optimizer = tf.train.AdamOptimizer(learning_rate=1e-6, name='optimizer').minimize(loss)
+optimizer = tf.train.AdamOptimizer(learning_rate=1e-6, beta1=.85, beta2=.9).minimize(loss)
 
 all_examples = np.array([[np.array(b), l] for b, l in batch_gen])
 # split data into train and validation
@@ -105,10 +105,7 @@ for i in range(NUM_EPOCHS):
     if valid_loss < min_loss:
         min_loss = valid_loss
         vars = sess.run([W1, b1, W2, b2, W3, b3])
-    if abs(valid_loss) < .1:
         pickle.dump(vars, open('./saves/weights.pickle', 'wb'))
         print('Saved a model with loss {}'.format(valid_loss))
-        sess.close()
-        exit()
 
 sess.close()

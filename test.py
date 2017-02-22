@@ -64,6 +64,5 @@ with tf.Session() as sess:
 sess.close()
 
 ids_prices = [[id, sp] for id, sp in zip(ids, prices)]
-import pandas as pd
 df_prices = pd.DataFrame(ids_prices)
 df_prices.to_csv('./data/my_submission.csv', index=False, header=['Id', 'SalePrice'])
